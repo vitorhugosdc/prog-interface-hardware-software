@@ -6,3 +6,6 @@ pratica7
 pratica7.o
 pratica7.s
 pratica7 (cópia).s
+shell_sort
+shell_sort.o
+shell_sort_primeira_versao.s
