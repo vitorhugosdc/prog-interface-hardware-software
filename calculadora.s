@@ -1,10 +1,12 @@
 .section .data
-    prompt1:      .asciz "Digite o primeiro número: "
-    prompt2:      .asciz "Digite o segundo número: "
-    op_prompt:    .asciz "Digite a operação (+, -, *): "
+    prompt1:      .asciz "Digite a base do triângulo (ou o primeiro número): "
+    prompt2:      .asciz "Digite a altura do triângulo (ou o segundo número): "
+    op_prompt:    .asciz "Digite a operação (+, -, *, /, t): "
     output:       .asciz "Resultado: %lf\n"
     scan_format:  .asciz "%lf"
     err_msg:      .asciz "Operação inválida!\n"
+    div_by_zero:  .asciz "Erro: Divisão por zero!\n"
+    half_const:   .double 0.5
 
 .section .bss
     num1: .space 8
@@ -16,7 +18,7 @@
     .globl _start
 
 _start:
-    # Solicita e lê o primeiro número diretamente como double
+    # Solicita e lê o primeiro número (ou base) diretamente como double
     pushl $prompt1
     call printf
     addl $4, %esp
@@ -26,7 +28,7 @@ _start:
     call scanf
     addl $8, %esp
 
-    # Solicita e lê o segundo número diretamente como double
+    # Solicita e lê o segundo número (ou altura) diretamente como double
     pushl $prompt2
     call printf
     addl $4, %esp
@@ -40,7 +42,7 @@ _start:
     movl $4, %eax
     movl $1, %ebx
     movl $op_prompt, %ecx
-    movl $34, %edx
+    movl $40, %edx
     int $0x80
 
     # Lê a operação
@@ -51,14 +53,18 @@ _start:
     int $0x80
 
     # Executa a operação
-    fldl num1
     fldl num2
+    fldl num1
     cmpb $'+', operation
     je add_nums
     cmpb $'-', operation
     je sub_nums
     cmpb $'*', operation
     je mul_nums
+    cmpb $'/', operation
+    je div_nums
+    cmpb $'t', operation
+    je triangle_area
     jmp invalid_op
 
 add_nums:
@@ -75,6 +81,29 @@ mul_nums:
     fmulp
     fstpl result
     jmp print_result
+
+div_nums:
+    ftst                           # Testa o valor no topo da pilha (num1 neste caso)
+    fstsw %ax                      # Armazena o status da word
+    sahf                           # Configura as flags de acordo
+    jz division_by_zero            # Verifica se a divisão é por zero
+    fdivp
+    fstpl result
+    jmp print_result
+
+triangle_area:
+    fmulp                          # Multiplica base e altura
+    fmull half_const               # Multiplica o produto por 0.5
+    fstpl result
+    jmp print_result
+
+division_by_zero:
+    movl $4, %eax
+    movl $1, %ebx
+    movl $div_by_zero, %ecx
+    movl $23, %edx
+    int $0x80
+    jmp end_program
 
 invalid_op:
     movl $4, %eax
