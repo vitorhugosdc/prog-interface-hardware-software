@@ -1,9 +1,10 @@
 .section .data
     prompt1:      .asciz "Digite o primeiro número: "
     prompt2:      .asciz "Digite o segundo número: "
-    op_prompt:    .asciz "Digite a operação (+ ou -): "
+    op_prompt:    .asciz "Digite a operação (+, -, *): "
     output:       .asciz "Resultado: %lf\n"
     scan_format:  .asciz "%lf"
+    err_msg:      .asciz "Operação inválida!\n"
 
 .section .bss
     num1: .space 8
@@ -39,7 +40,7 @@ _start:
     movl $4, %eax
     movl $1, %ebx
     movl $op_prompt, %ecx
-    movl $31, %edx
+    movl $34, %edx
     int $0x80
 
     # Lê a operação
@@ -56,7 +57,9 @@ _start:
     je add_nums
     cmpb $'-', operation
     je sub_nums
-    jmp end_program
+    cmpb $'*', operation
+    je mul_nums
+    jmp invalid_op
 
 add_nums:
     faddp
@@ -67,6 +70,19 @@ sub_nums:
     fsubp
     fstpl result
     jmp print_result
+
+mul_nums:
+    fmulp
+    fstpl result
+    jmp print_result
+
+invalid_op:
+    movl $4, %eax
+    movl $1, %ebx
+    movl $err_msg, %ecx
+    movl $18, %edx
+    int $0x80
+    jmp end_program
 
 print_result:
     # Carregar o resultado no FPU
