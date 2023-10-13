@@ -1,7 +1,7 @@
 .section .data
     prompt1:      .asciz "Digite a base do triângulo (ou o primeiro número): "
     prompt2:      .asciz "Digite a altura do triângulo (ou o segundo número): "
-    op_prompt:    .asciz "Digite a operação (+, -, *, /, t): "
+    op_prompt:    .asciz "Digite a operação (+, -, *, /, t, r): "
     output:       .asciz "Resultado: %lf\n"
     scan_format:  .asciz "%lf"
     err_msg:      .asciz "Operação inválida!\n"
@@ -42,7 +42,7 @@ _start:
     movl $4, %eax
     movl $1, %ebx
     movl $op_prompt, %ecx
-    movl $40, %edx
+    movl $42, %edx  # Atualizado para refletir o tamanho da string
     int $0x80
 
     # Lê a operação
@@ -65,6 +65,8 @@ _start:
     je div_nums
     cmpb $'t', operation
     je triangle_area
+    cmpb $'r', operation
+    je sqrt_num
     jmp invalid_op
 
 add_nums:
@@ -83,17 +85,22 @@ mul_nums:
     jmp print_result
 
 div_nums:
-    ftst                           # Testa o valor no topo da pilha (num1 neste caso)
-    fstsw %ax                      # Armazena o status da word
-    sahf                           # Configura as flags de acordo
-    jz division_by_zero            # Verifica se a divisão é por zero
+    ftst
+    fstsw %ax
+    sahf
+    jz division_by_zero
     fdivp
     fstpl result
     jmp print_result
 
 triangle_area:
-    fmulp                          # Multiplica base e altura
-    fmull half_const               # Multiplica o produto por 0.5
+    fmulp
+    fmull half_const
+    fstpl result
+    jmp print_result
+
+sqrt_num:
+    fsqrt
     fstpl result
     jmp print_result
 
@@ -114,17 +121,15 @@ invalid_op:
     jmp end_program
 
 print_result:
-    # Carregar o resultado no FPU
     fldl result
     subl $8, %esp
-    fstpl (%esp)  # armazenar o topo da pilha do FPU na pilha
+    fstpl (%esp)
     pushl $output
     call printf
     addl $12, %esp
     jmp end_program
 
 end_program:
-    # Saída
     movl $1, %eax
     xorl %ebx, %ebx
     int $0x80
