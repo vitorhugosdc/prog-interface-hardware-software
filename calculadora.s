@@ -1,7 +1,7 @@
 .section .data
     prompt:          .asciz "Digite o próximo número: "
     num_prompt:      .asciz "Quantos números você deseja inserir? "
-    op_prompt:       .asciz "Digite a operação (+, -): "
+    op_prompt:       .asciz "Digite a operação (+, -, *): "
     scan_format:     .asciz "%lf"
     scan_format_int: .asciz "%d"
     scan_op_format:  .asciz " %c"
@@ -64,9 +64,10 @@ ask_operation:
 
     cmpb $'+', operation
     je perform_addition
-
     cmpb $'-', operation
     je perform_subtraction
+    cmpb $'*', operation
+    je perform_multiplication
 
     # Se chegou aqui, a operação é inválida
     jmp invalid_op
@@ -108,6 +109,27 @@ subtraction_loop:
     jmp subtraction_loop
 
 done_subtraction:
+    fstpl result
+    jmp print_result
+
+perform_multiplication:
+    leal numbers, %edi   # Apontar para o começo dos números
+    fld1                # Carregar 1.0 (neutral na multiplicação) para a pilha
+
+    # Comece a multiplicação
+    movl $0, %esi       # Começar do primeiro número
+multiplication_loop:
+    cmpl count, %esi
+    je done_multiplication
+
+    fldl (%edi)         # Carregue o próximo número
+    fmulp               # Multiplique com o acumulador
+
+    addl $8, %edi       # Mova para o próximo número
+    incl %esi
+    jmp multiplication_loop
+
+done_multiplication:
     fstpl result
     jmp print_result
 
