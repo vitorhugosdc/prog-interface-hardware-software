@@ -1,13 +1,14 @@
 .section .data
     prompt:          .asciz "Digite o próximo número: "
     num_prompt:      .asciz "Quantos números você deseja inserir? "
-    op_prompt:       .asciz "Digite a operação (+, -, *): "
+    op_prompt:       .asciz "Digite a operação (+, -, *, /): " # Adicionei a opção de divisão aqui
     scan_format:     .asciz "%lf"
     scan_format_int: .asciz "%d"
     scan_op_format:  .asciz " %c"
     operation:       .space 2
     output:          .asciz "Resultado: %lf\n"
     err_msg:         .asciz "Operação inválida!\n"
+    div_zero_msg:    .asciz "Erro: Divisão por zero!\n" # Mensagem de erro para divisão por zero
 
 .section .bss
     numbers:  .space 800   # Para armazenar 100 doubles (8 bytes cada)
@@ -68,6 +69,8 @@ ask_operation:
     je perform_subtraction
     cmpb $'*', operation
     je perform_multiplication
+    cmpb $'/', operation
+    je perform_division
 
     # Se chegou aqui, a operação é inválida
     jmp invalid_op
@@ -133,6 +136,37 @@ done_multiplication:
     fstpl result
     jmp print_result
 
+perform_division:
+    leal numbers, %edi   # Apontar para o começo dos números
+    fldl (%edi)          # Carregue o primeiro número para a pilha
+
+    # Comece a divisão
+    movl $1, %esi       # Começar do segundo número
+division_loop:
+    cmpl count, %esi
+    je done_division
+
+    addl $8, %edi        # Mova para o próximo número
+    fldl (%edi)          # Carregue o próximo número
+    ftst                # Testa o valor atual na pilha
+    fstsw %ax
+    sahf
+    jz division_by_zero # Se o número é 0, erro de divisão por zero
+    fdivrp              # Divida o acumulador pelo número e pop ambos os valores
+
+    incl %esi
+    jmp division_loop
+
+done_division:
+    fstpl result
+    jmp print_result
+
+division_by_zero:
+    pushl $div_zero_msg
+    call printf
+    addl $4, %esp
+    jmp end_program
+    
 invalid_op:
     pushl $err_msg
     call printf
