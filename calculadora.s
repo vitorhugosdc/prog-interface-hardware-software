@@ -1,123 +1,120 @@
 .section .data
-    prompt1:      .asciz "Digite a base do triângulo (ou o primeiro número): "
-    prompt2:      .asciz "Digite a altura do triângulo (ou o segundo número): "
-    op_prompt:    .asciz "Digite a operação (+, -, *, /, t, r): "
-    output:       .asciz "Resultado: %lf\n"
-    scan_format:  .asciz "%lf"
-    err_msg:      .asciz "Operação inválida!\n"
-    div_by_zero:  .asciz "Erro: Divisão por zero!\n"
-    half_const:   .double 0.5
+    prompt:          .asciz "Digite o próximo número: "
+    num_prompt:      .asciz "Quantos números você deseja inserir? "
+    op_prompt:       .asciz "Digite a operação (+, -): "
+    scan_format:     .asciz "%lf"
+    scan_format_int: .asciz "%d"
+    scan_op_format:  .asciz " %c"
+    operation:       .space 2
+    output:          .asciz "Resultado: %lf\n"
+    err_msg:         .asciz "Operação inválida!\n"
 
 .section .bss
-    num1: .space 8
-    num2: .space 8
-    result: .space 8
-    operation: .space 2
+    numbers:  .space 800   # Para armazenar 100 doubles (8 bytes cada)
+    count:    .space 4     # Armazenar a contagem de números inseridos pelo usuário
+    result:   .space 8
 
 .section .text
     .globl _start
 
 _start:
-    # Solicita e lê o primeiro número (ou base) diretamente como double
-    pushl $prompt1
+    # Solicita e lê a quantidade de números
+    pushl $num_prompt
     call printf
     addl $4, %esp
 
-    pushl $num1
+    pushl $count
+    pushl $scan_format_int
+    call scanf
+    addl $8, %esp
+
+    # Verifique se o número de entradas é válido
+    cmpl $100, %eax
+    jg end_program
+
+    # Coletar todos os números
+    movl $0, %esi  # contador
+read_loop:
+    cmpl count, %esi
+    je ask_operation
+
+    pushl $prompt
+    call printf
+    addl $4, %esp
+
+    leal numbers(, %esi, 8), %edi
+    pushl %edi
     pushl $scan_format
     call scanf
     addl $8, %esp
 
-    # Solicita e lê o segundo número (ou altura) diretamente como double
-    pushl $prompt2
+    incl %esi
+    jmp read_loop
+
+ask_operation:
+    pushl $op_prompt
     call printf
     addl $4, %esp
 
-    pushl $num2
-    pushl $scan_format
+    leal operation, %ecx
+    pushl %ecx
+    pushl $scan_op_format
     call scanf
     addl $8, %esp
 
-    # Solicita a operação ao usuário
-    movl $4, %eax
-    movl $1, %ebx
-    movl $op_prompt, %ecx
-    movl $42, %edx  # Atualizado para refletir o tamanho da string
-    int $0x80
-
-    # Lê a operação
-    movl $3, %eax
-    movl $0, %ebx
-    lea operation, %ecx
-    movl $2, %edx
-    int $0x80
-
-    # Executa a operação
-    fldl num2
-    fldl num1
     cmpb $'+', operation
-    je add_nums
+    je perform_addition
+
     cmpb $'-', operation
-    je sub_nums
-    cmpb $'*', operation
-    je mul_nums
-    cmpb $'/', operation
-    je div_nums
-    cmpb $'t', operation
-    je triangle_area
-    cmpb $'r', operation
-    je sqrt_num
+    je perform_subtraction
+
+    # Se chegou aqui, a operação é inválida
     jmp invalid_op
 
-add_nums:
-    faddp
+perform_addition:
+    movl $0, %esi
+    fldz  # Empilhe 0 para iniciar a soma
+
+add_loop:
+    cmpl count, %esi
+    je done_addition
+
+    leal numbers(, %esi, 8), %edi
+    fldl (%edi)    # Empilhe o próximo número
+    faddp          # Adicione ao acumulador
+
+    incl %esi
+    jmp add_loop
+
+done_addition:
     fstpl result
     jmp print_result
 
-sub_nums:
-    fsubp
+perform_subtraction:
+    leal numbers, %edi   # Apontar para o começo dos números
+    fldl (%edi)          # Carregue o primeiro número para a pilha
+
+    # Agora, avance para o próximo número e comece a subtração
+    movl $1, %esi       # Começar do segundo número
+subtraction_loop:
+    cmpl count, %esi
+    je done_subtraction
+
+    addl $8, %edi        # Mova para o próximo número
+    fldl (%edi)          # Carregue o próximo número
+    fsubrp               # Subtraia do acumulador e pop ambos os valores
+
+    incl %esi
+    jmp subtraction_loop
+
+done_subtraction:
     fstpl result
     jmp print_result
-
-mul_nums:
-    fmulp
-    fstpl result
-    jmp print_result
-
-div_nums:
-    ftst
-    fstsw %ax
-    sahf
-    jz division_by_zero
-    fdivp
-    fstpl result
-    jmp print_result
-
-triangle_area:
-    fmulp
-    fmull half_const
-    fstpl result
-    jmp print_result
-
-sqrt_num:
-    fsqrt
-    fstpl result
-    jmp print_result
-
-division_by_zero:
-    movl $4, %eax
-    movl $1, %ebx
-    movl $div_by_zero, %ecx
-    movl $23, %edx
-    int $0x80
-    jmp end_program
 
 invalid_op:
-    movl $4, %eax
-    movl $1, %ebx
-    movl $err_msg, %ecx
-    movl $18, %edx
-    int $0x80
+    pushl $err_msg
+    call printf
+    addl $4, %esp
     jmp end_program
 
 print_result:
