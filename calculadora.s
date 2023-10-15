@@ -1,7 +1,7 @@
 .section .data
     prompt:          .asciz "Digite o próximo número: "
     num_prompt:      .asciz "Quantos números você deseja inserir? "
-    op_prompt:       .asciz "Digite a operação (+, -, *, /, t): " # Adicionei a opção de divisão aqui
+    op_prompt:       .asciz "Digite a operação (+, -, *, /, t, r): " # Adicionei a opção de divisão aqui
     scan_format:     .asciz "%lf"
     scan_format_int: .asciz "%d"
     scan_op_format:  .asciz " %c"
@@ -73,6 +73,8 @@ ask_operation:
     je perform_division
     cmpb $'t', operation
     je calculate_triangle_area
+    cmpb $'r', operation
+    je calculate_square_root
 
     # Se chegou aqui, a operação é inválida
     jmp invalid_op
@@ -179,6 +181,13 @@ calculate_triangle_area:
     fld1
     faddp                 # Adicionar 1.0 + 1.0 para obter 2.0
     fdivrp                # Dividir (base x altura) por 2
+    fstpl result          # Armazenar o resultado
+    jmp print_result
+
+calculate_square_root:
+    leal numbers, %edi    # Apontar para o começo dos números
+    fldl (%edi)           # Carregar o primeiro número
+    fsqrt                 # Calcular a raiz quadrada
     fstpl result          # Armazenar o resultado
     jmp print_result
 
