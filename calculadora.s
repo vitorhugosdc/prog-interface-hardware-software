@@ -7,6 +7,7 @@
     scan_op_format:  .asciz " %c"
     operation:       .space 2
     output:          .asciz "Resultado: %lf\n"
+    single_output:   .asciz "Raiz de %lf: %lf\n"
     err_msg:         .asciz "Operação inválida!\n"
     div_zero_msg:    .asciz "Erro: Divisão por zero!\n" # Mensagem de erro para divisão por zero
 
@@ -185,11 +186,26 @@ calculate_triangle_area:
     jmp print_result
 
 calculate_square_root:
-    leal numbers, %edi    # Apontar para o começo dos números
-    fldl (%edi)           # Carregar o primeiro número
-    fsqrt                 # Calcular a raiz quadrada
-    fstpl result          # Armazenar o resultado
-    jmp print_result
+    movl $0, %esi       # Começar do primeiro número
+sqrt_loop:
+    cmpl count, %esi
+    je end_program      # Se processamos todos os números, encerre o programa
+
+    leal numbers(, %esi, 8), %edi
+    fldl (%edi)         # Carregar o número atual
+    fsqrt               # Calcular a raiz quadrada
+
+    subl $16, %esp      # Reservar espaço para dois doubles na pilha
+    fstpl 8(%esp)       # Armazenar a raiz calculada no espaço reservado
+    fldl (%edi)         # Recarregar o número original
+    fstpl (%esp)        # Armazenar número original no espaço reservado
+
+    pushl $single_output
+    call printf
+    addl $20, %esp      # Limpar pilha (4 para o single_output e 16 para os dois doubles)
+
+    incl %esi           # Mover para o próximo número
+    jmp sqrt_loop
 
 invalid_op:
     pushl $err_msg
