@@ -11,3 +11,5 @@ shell_sort.o
 shell_sort_primeira_versao.s
 calculadora.o
 calculadora
+comb_sort
+comb_sort.o
